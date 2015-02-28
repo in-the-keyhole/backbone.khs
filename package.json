@@ -1,0 +1,50 @@
+{
+  "name": "backbone.khs",
+  "version": "0.0.1",
+  "description": "Backbone Extension",
+  "main": "dist/backbone.khs.js",
+  "scripts": {
+    "test": "karma start",
+    "build": "browserify ./src/backbone.khs.js --standalone jquery -o ./dist/backbone.khs.js",
+    "watch": "watchify ./src/backbone.khs.js --standalone jquery -o ./dist/backbone.khs.js"
+  },
+  "author": {
+    "name": "Mark Determan",
+    "email": "mdeterman@gmail.com"
+  },
+  "engines": {
+    "node": "*"
+  },
+  "licenses": [
+    {
+      "type": "MIT",
+      "url": "https://raw.githubusercontent.com/in-the-keyhole/backbone.khsg/master/LICENSE"
+    }
+  ],
+  "bugs": {
+    "url": "https://github.com/in-the-keyhole/backbone.khs/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:mdeterman/in-the-keyhole/backbone.khs.git"
+  },
+  "dependencies": {
+    "backbone": "^1.1.2",
+    "backbone.radio": "^0.9.0",
+    "backbone.stickit": "^0.8.0",
+    "underscore": "^1.8.2"
+  },
+  "devDependencies": {
+    "browserify": "^9.0.3",
+    "browserify-shim": "^3.8.3",
+    "jasmine-core": "^2.2.0",
+    "jquery": "^2.1.3",
+    "karma": "^0.12.31",
+    "karma-browserify": "^3.0.3",
+    "karma-chrome-launcher": "^0.1.7",
+    "karma-coverage": "^0.2.7",
+    "karma-jasmine": "^0.2.2",
+    "karma-phantomjs-launcher": "^0.1.4",
+    "karma-safari-launcher": "^0.1.1"
+  }
+}
