@@ -4,7 +4,7 @@
   "description": "Backbone Extension",
   "main": "dist/backbone.khs.js",
   "scripts": {
-    "test": "./node_modules/karma/bin/karma start start",
+    "test": "./node_modules/karma/bin/karma start",
     "build": "browserify ./src/backbone.khs.js --standalone jquery -o ./dist/backbone.khs.js",
     "watch": "watchify ./src/backbone.khs.js --standalone jquery -o ./dist/backbone.khs.js"
   },
