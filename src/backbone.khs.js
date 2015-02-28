@@ -39,7 +39,7 @@ exports.extend = Backbone.Model.extend;
 exports.Object = function (options) {
     // make sure we have a valid object to pass to the initialize function
     this.options = _.extend({}, _.result(this, 'options'), options);
-    this.initialize.apply(this, this.options);
+    this.initialize.apply(this, [this.options]);
 };
 
 // Add the backbone extend function to the Object
