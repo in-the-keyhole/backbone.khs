@@ -34,4 +34,59 @@ describe('RegionManger Tests', function() {
         expect($root.children().length).toEqual(1);
         expect(region.$el.find('h1').length).toEqual(1);
     });
+
+    it('show function - send view rendered', function() {
+        spyOn(Backbone.RegionManager.prototype, 'remove');
+
+        var View = Backbone.View.extend({
+            className: "view",
+            render: function() {
+                return this.$el.append($('<h1>').append("test"));
+            }
+        });
+
+        var view = new View();
+        view.render();
+
+        expect(view.isRendered()).toBeTruthy();
+        expect($root.children().length).toEqual(0);
+
+        region.show(view);
+
+        expect($root.children().length).toEqual(1);
+        expect(region.$el.find('h1').length).toEqual(1);
+    })
+
+    it('show function - make sure remove is called', function() {
+        spyOn(region, 'remove');
+
+        var View = Backbone.View.extend({
+            className: "view",
+            render: function() {
+                return this.$el.append($('<h1>').append("test"));
+            }
+        });
+
+        region.show(new View());
+
+        expect(region.remove).toHaveBeenCalled();
+    });
+
+    it('remove function - detach view from root', function() {
+        var View = Backbone.View.extend({
+            className: "view",
+            render: function() {
+                return this.$el.append($('<h1>').append("test"));
+            }
+        });
+
+        var view = new View();
+        region.show(view);
+
+        region.remove();
+
+        expect(view.isRendered()).toBeTruthy();
+        expect($root.children().length).toEqual(0);
+        expect(region.$el.find('h1').length).toEqual(0);
+    });
 });

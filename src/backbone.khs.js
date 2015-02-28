@@ -1,5 +1,14 @@
 'use strict';
 
+/**
+ * @file Backbone extension
+ * @version 1.0.0
+ * @author Mark Determan <mdeterman@keyholesoftware.com>
+ * @module in-the-keyhole/backbone.khs
+ * @licence MIT
+ * @copyright Keyhole Software, LLC.
+ */
+
 var $ = require('jquery');
 var _ = require('underscore');
 var Backbone = require('backbone');
@@ -179,13 +188,14 @@ exports.RegionManager = exports.Object.extend({
 
     constructor: function (options) {
         options || (options = {});
-        _(this).bindAll('show', 'remove');
+        _.bindAll(this, 'show', 'remove');
         _.extend(this, _.pick(options, ['$el']));
     },
 
     /**
      * show the view with the $el that was pasted during the creation
-     * on the class
+     * on the class. This will call a remove function to clean up the
+	 * current $el. The view is added to the $el with jQuery.append.
      * @param {object} view - this expected to be a View object
      */
     show: function (view) {
@@ -197,6 +207,9 @@ exports.RegionManager = exports.Object.extend({
     },
     /**
      * clean up the view
+	 * this remove the children by doing a jQuery.detach. 
+	 * this is to prevet jQuery from removing the events
+	 * form the object
      */
     remove: function () {
         return this.$el.children().detach();
@@ -206,7 +219,7 @@ exports.RegionManager = exports.Object.extend({
 /**
  * Internal helper class to help manage regions.
  * @param {object} options - configurable options for the class.
- * @param {object} options.channelName - define the name of the application channel
+ * @param {object} options.channelName - auto generated if unset
  * @extends Object
  * @constructor
  */
@@ -223,21 +236,23 @@ exports.Application = exports.Object.extend({
 
     constructor: function (options) {
         _.bindAll(this, 'addRegions');
+		_.extend(this, _.pick(options, ['channelName']));
         this.channelName || (this.channelName = _.uniqueId('channel'));
         exports.Object.apply(this, arguments);
     },
 
     /**
-     *  Function for adding regions to the application
-     *  
-     *  @param {object} object - definition of the regions  
-     *  
-     *  @example
-     *  this.addRegion({
-     *      body: '#body'
-     *  });
-     *  
-     *  this.regions.body.show(view)
+     * Function for adding regions to the application
+	 * This will use jQuery(document) for the base selector
+     * 
+     * @param {object} object - definition of the regions  
+     * 
+     * @example
+     * this.addRegion({
+     *     body: '#body'
+     * });
+     * 
+     * this.regions.body.show(view)
      */
     addRegions: function (object) {
         this.regions || (this.regions= {});
