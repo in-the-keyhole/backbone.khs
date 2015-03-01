@@ -20,7 +20,7 @@ module.exports = function (config) {
 
         // test results reporter to use
         // possible values: 'dots', 'progress', 'junit', 'growl', 'coverage'
-        //reporters: ['dots', 'coverage'],
+        reporters: ['dots'],
 
         preprocessors: {
             // source files, that you wanna generate coverage for
@@ -55,7 +55,7 @@ module.exports = function (config) {
         logLevel: config.LOG_ERROR,
 
         // enable / disable watching file and executing tests whenever any file changes
-        autoWatch: false,
+        autoWatch: true,
 
         // Start these browsers, currently available:
         // - Chrome

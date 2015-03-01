@@ -13,6 +13,8 @@ var $ = require('jquery');
 var _ = require('underscore');
 var Backbone = require('backbone');
 var Radio = require('backbone.radio');
+var EmptyFn = function() {};
+
 
 // https://github.com/webpack/webpack/issues/34#issuecomment-50829464
 Backbone.$ = $;
@@ -52,7 +54,7 @@ _.extend(exports.Object.prototype, {
      * @param {object} options - object passed into the construction of the object
      * @abstract 
      */
-    initialize: function(options) { }
+    initialize: EmptyFn
 });
 
 /**
@@ -190,6 +192,7 @@ exports.RegionManager = exports.Object.extend({
         options || (options = {});
         _.bindAll(this, 'show', 'remove');
         _.extend(this, _.pick(options, ['$el']));
+		exports.Object.apply(this, arguments);
     },
 
     /**
@@ -268,79 +271,164 @@ exports.Application = exports.Object.extend({
 // include Backbone Radio Commands
 _.extend(exports.Application.prototype, Radio.Commands);
 
+// Cached regular expressions for matching named param parts and splatted
+// parts of route strings.
+var optionalParam = /\((.*?)\)/g;
+var namedParam    = /(\(\?)?:\w+/g;
+var splatParam    = /\*\w+/g;
+var escapeRegExp  = /[\-{}\[\]+?.,\\\^$|#\s]/g;
+
+/**
+ * Controller to handel navigation flow for a module
+ * @param {object} options - configurable options for the class.
+ * @param {object} options.path - base path for routes
+ * @extends Object
+ * @abstract
+ *
+ * @example
+ * var Module = Backbone.Module.extend({
+ *      path: 'test',
+ *      routes: {
+ *          '': 'show',
+ *          ':value': 'search'
+ *      },
+ *
+ *      show: function() { },
+ *
+ *      search: function(value) { }
+ * });
+ */
 exports.Module = exports.Object.extend({
+
+
+    /**
+     * @property {string} path - base path for routes
+     * @private
+     */
     path: undefined,
-    view: undefined,
+
+    /**
+     * @property {object} routes -
+     *
+     * @example
+     * routes: {
+     *      '', 'show',
+     *      ':value': 'search'
+     * }
+     */
+    routes: undefined,
 
     constructor: function (options) {
+        _.bindAll(this, 'start', 'stop', '_handleBeforeRoute', '_handleAfterRoute');
         options || (options = {});
-        _.extend(this, _.pick(options, ['path']));
-        this._registerRoutes();
+        _.extend(this, _.pick(options, ['path']))
+        this._buildRoutes.apply(this);
         exports.Object.apply(this, arguments);
     },
-    //start: EmptyFn,
-    
-    //
-    //stop: EmptyFn,
-    //
-    //suspend: EmptyFn,
-    
-    destroy: function() {
-        this.view && this.view.remove() && (this.view = undefined);
+
+    /**
+     *
+     */
+    start: function() {
+        this._registerRoutes();
+    },
+
+    /**
+     *
+     */
+    stop: function() {
         this._deregisterRoutes();
     },
-    _routeToRegExp: function(fragment) {
-        return Backbone.Router.prototype._routeToRegExp(this._buildPath(fragment))
-    },
-    _buildPath: function(fragment) {
-        var path = this.path;
-        if(fragment.length > 0) path += "/" + fragment;
-        return path
+
+    /**
+     * function to register route with Backbone.history
+     * @private
+     */
+    _registerRoutes: function() {
+        exports.history.handlers = _.uniq(_.union(exports.history.handlers, _.values(this.routes)));
     },
 
+    /**
+     * function to remove route from Backbone.history
+     * @private
+     */
     _deregisterRoutes: function() {
-        var handlers = exports.history.handlers.filter(function(n){ return n != undefined });
-        _.each(this.routes, function(value, key) {
-            var route =  this._routeToRegExp(key)
-            var index = _.findIndex(handlers, function(obj) {
-                if(obj.route.source === route.source) return true;
-            }, this);
-            if(index != -1) delete handlers[index];
-        }, this);
-        // need to clean up undefined in the array.
-        exports.history.handlers = handlers.filter(function(n){ return n != undefined });
+        exports.history.handlers = _.difference(exports.history.handlers, _.values(this.routes));
     },
-    _registerRoutes: function() {
-        var _this = this;
+
+    /**
+     * * @throws function not found
+     */
+    _buildRoutes: function() {
+        var _this = this,
+            beforeRoute = this._handleBeforeRoute,
+            afterRoute = this._handleAfterRoute;
+
         _.each(this.routes, function(value, key) {
-            // TODO: check if this is valid, if not throw an error
-            var callback = this[value];
-            if(callback) {
-                callback = _.wrap(callback, function(func) {
-                    console.log("before")
-                    var args =  Array.prototype.slice.call(arguments);
-                    args.shift();
-                    func.apply(_this, args);
-                    console.log("after")
-                });
-            } else {
-                throw "function `" + value + '` is undefined.';
+            var callback = this[value],
+                route = {};
+
+            if(!_.isFunction(callback)) {
+                throw "route function `" + value + "` not found";
             }
 
-            exports.history.handlers.push({
-                route: this._routeToRegExp(key),
-                callback: function(fragment) {
-                    _this._handelRoute(fragment, this.route, callback)
-                }
+            var wrapper = _.wrap(callback, function() {
+                beforeRoute(route);
+                // make sure we call in the correct scope
+                callback.call(_this);
+                afterRoute(route);
             });
+
+            route.key = key;
+            route.route = this._routeToRegExp(key);
+            route.callback = wrapper;
+
+            this.routes[key] = route
         }, this);
     },
 
-    _handelRoute: function(fragment, regx, callback) {
-        var array = regx.exec(fragment);
-        array.shift()
-        callback.apply(this, array);
-    }
+
+    /**
+     * @see Backbone.Router._routeToRegExp
+     * @param route
+     * @return {RegExp}
+     * @private
+     */
+    _routeToRegExp: function(route) {
+        (route.length > 0)? route = this.path + "/" + route : route = this.path;
+        route = route.replace(escapeRegExp, '\\$&')
+            .replace(optionalParam, '(?:$1)?')
+            .replace(namedParam, function(match, optional) {
+                return optional ? match : '([^/?]+)';
+            })
+            .replace(splatParam, '([^?]*?)');
+        return new RegExp('^' + route + '(?:\\?([\\s\\S]*))?$');
+    },
+
+    /**
+     * function to handle the
+     * @param {string} fragment - the path for the route
+     * @param {object} route - router object
+     * @param {string} route.key -
+     * @param {RegExp} route.route -
+     * @param {function} route.callback -
+     * @param {object} callback - function for callback with the scope of this
+     * @private
+     */
+    _handleBeforeRoute: EmptyFn,
+
+    /**
+     * function to handle the
+     * @param {string} fragment - the path for the route
+     * @param {object} route - router object
+     * @param {string} route.key -
+     * @param {RegExp} route.route -
+     * @param {function} route.callback -
+     * @param {object} callback - function for callback with the scope of this
+     * @private
+     */
+    _handleAfterRoute: EmptyFn
+
 });
 
 
