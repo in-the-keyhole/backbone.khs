@@ -530,42 +530,56 @@ var View = Backbone.View.extend({
 _.extend(View.prototype, Radio.Commands)
 exports.View = View;
 
-exports.RegionView = exports.View.extend({
+var RegionView = View.extend({
+
     /**
      * @property {object}
+     *
+     * @example
+     * this.addRegion({
+     *     body: '#body'
+     * });
      */
     regions: undefined,
 
     constructor: function (options) {
-        _.bindAll(this, 'addRegions');
-        exports.View.apply(this, arguments);
+        _.bindAll(this, '_loadRegions');
+        View.apply(this, arguments);
     },
 
     /**
-     * Method to render the view.
-     * This method is use for internal use only
-     *
-     * @see View
-     * @private
-     */
+    * Method to render the view.
+    * This method is use for internal use only
+    *
+    * @see View._renderTemplate
+    * @private
+    */
     _renderTemplate: function () {
         // call parent
-        exports.View.prototype._renderTemplate.apply(this);
+       View.prototype._renderTemplate.call(this);
 
         // auto build the regions
-        this.addRegions && this.addRegions.apply(this, [this.regions]);
+        this._loadRegions.call(this);
     },
 
-    addRegions: function (object) {
+    /**
+     * Function for adding regions to the application
+     * This will use this.$el for the base selector
+     *
+     * @private
+     */
+    _loadRegions: function () {
         // make sure we have an object
         this.regions || (this.regions = {})
-        _.each(object, function (value, key) {
-            this.regions[key] = new exports.RegionManager({
+        _.each(this.regions, function (value, key) {
+            this.regions[key] = new RegionManager({
                 $el: this.$(value)
-            })
+            });
         }, this);
     }
 });
+
+exports.RegionView = RegionView;
 
 exports.CollectionView = exports.View.extend({
 
