@@ -13,7 +13,8 @@ var $ = require('jquery');
 var _ = require('underscore');
 var Backbone = require('backbone');
 var Radio = require('backbone.radio');
-var EmptyFn = function() {};
+var Stickit = require("backbone.stickit");
+var EmptyFn = _.noop;
 
 
 // https://github.com/webpack/webpack/issues/34#issuecomment-50829464
@@ -26,7 +27,7 @@ exports.Backbone = Backbone;
 exports.$ = exports.Backbone.$;
 
 // Short cut for the history object
-exports.history = exports.Backbone.history;
+var history = exports.Backbone.history;
 
 // Borrow this Backbone `extend` method so we cn use it as needed
 exports.extend = Backbone.Model.extend;
@@ -38,17 +39,17 @@ exports.extend = Backbone.Model.extend;
  * @mixes Backbone.Model.extend
  * @constructor
  */
-exports.Object = function (options) {
+var Object = function (options) {
     // make sure we have a valid object to pass to the initialize function
     this.options = _.extend({}, _.result(this, 'options'), options);
     this.initialize.apply(this, [this.options]);
 };
 
 // Add the backbone extend function to the Object
-exports.Object.extend = exports.extend;
+Object.extend = exports.extend;
 
 // Add the initialize function.
-_.extend(exports.Object.prototype, {
+_.extend(Object.prototype, {
     /**
      * Abstract function for objects. This will be called on the creation of the class.
      * @param {object} options - object passed into the construction of the object
@@ -57,6 +58,8 @@ _.extend(exports.Object.prototype, {
     initialize: EmptyFn
 });
 
+exports.Object = Object;
+
 /**
  * An abstract class to give some basic structure around the session.
  * @param {object} options - configurable options for the class.
@@ -64,7 +67,7 @@ _.extend(exports.Object.prototype, {
  * @mixes Bootstrap.Radio.Command
  * @abstract
  */
-exports.Session = exports.Object.extend({
+var Session = Object.extend({
     
     /**
      * Track the state of the session
@@ -166,8 +169,9 @@ exports.Session = exports.Object.extend({
     }
 
 });
-// include Backbone Radio Commands
-_.extend(exports.Session.prototype, Radio.Commands);
+
+_.extend(Session.prototype, Radio.Commands);
+exports.Session = Session;
 
 /**
  * Internal helper class to help manage regions.
@@ -176,7 +180,7 @@ _.extend(exports.Session.prototype, Radio.Commands);
  * @extends Object
  * @constructor
  */
-exports.RegionManager = exports.Object.extend({
+var RegionManager = Object.extend({
     /**
      * @property {object} jquery selected dom element 
      * @private 
@@ -192,7 +196,7 @@ exports.RegionManager = exports.Object.extend({
         options || (options = {});
         _.bindAll(this, 'show', 'remove');
         _.extend(this, _.pick(options, ['$el']));
-		exports.Object.apply(this, arguments);
+		Object.apply(this, arguments);
     },
 
     /**
@@ -219,6 +223,8 @@ exports.RegionManager = exports.Object.extend({
     }
 });
 
+exports.RegionManager = RegionManager;
+
 /**
  * Internal helper class to help manage regions.
  * @param {object} options - configurable options for the class.
@@ -226,7 +232,7 @@ exports.RegionManager = exports.Object.extend({
  * @extends Object
  * @constructor
  */
-exports.Application = exports.Object.extend({
+var Application = Object.extend({
     /**
      * @property {string} channelName - name of the channel of Backbone.Radio
      * @private
@@ -241,7 +247,7 @@ exports.Application = exports.Object.extend({
         _.bindAll(this, 'addRegions');
 		_.extend(this, _.pick(options, ['channelName']));
         this.channelName || (this.channelName = _.uniqueId('channel'));
-        exports.Object.apply(this, arguments);
+        Object.apply(this, arguments);
     },
 
     /**
@@ -261,15 +267,15 @@ exports.Application = exports.Object.extend({
         this.regions || (this.regions= {});
         object || (object = {});
         _.each(object, function (value, key) {
-            this.regions[key] = new exports.RegionManager({
+            this.regions[key] = new RegionManager({
                 $el: $(document).find(value)
             })
         }, this);
     }
 });
 
-// include Backbone Radio Commands
-_.extend(exports.Application.prototype, Radio.Commands);
+_.extend(Application.prototype, Radio.Commands);
+exports.Application = Application;
 
 // Cached regular expressions for matching named param parts and splatted
 // parts of route strings.
@@ -298,7 +304,7 @@ var escapeRegExp  = /[\-{}\[\]+?.,\\\^$|#\s]/g;
  *      search: function(value) { }
  * });
  */
-exports.Module = exports.Object.extend({
+var Module = Object.extend({
 
 
     /**
@@ -323,7 +329,7 @@ exports.Module = exports.Object.extend({
         options || (options = {});
         _.extend(this, _.pick(options, ['path']))
         this._buildRoutes.apply(this);
-        exports.Object.apply(this, arguments);
+        Object.apply(this, arguments);
     },
 
     /**
@@ -345,7 +351,7 @@ exports.Module = exports.Object.extend({
      * @private
      */
     _registerRoutes: function() {
-        exports.history.handlers = _.uniq(_.union(exports.history.handlers, _.values(this.routes)));
+        history.handlers = _.uniq(_.union(history.handlers, _.values(this.routes)));
     },
 
     /**
@@ -353,11 +359,13 @@ exports.Module = exports.Object.extend({
      * @private
      */
     _deregisterRoutes: function() {
-        exports.history.handlers = _.difference(exports.history.handlers, _.values(this.routes));
+        history.handlers = _.difference(history.handlers, _.values(this.routes));
     },
 
     /**
-     * * @throws function not found
+     * Function to build routes
+     * @throws function not found
+     * @private
      */
     _buildRoutes: function() {
         var _this = this,
@@ -431,50 +439,79 @@ exports.Module = exports.Object.extend({
 
 });
 
+exports.Module = Module;
 
-exports.View = Backbone.View.extend({
+/**
+ * View Controller
+ * @param {object} options - configurable options for the class.
+ * @param {object} options.path - base path for routes
+ * @extends Backbone.View
+ * @abstract
+ */
+var View = Backbone.View.extend({
+
+    /**
+     * @property {string} channelName - name of the channel of Backbone.Radio
+     * @private
+     */
     channelName: undefined,
-    beforeRender: function() { },
-    afterRender: function() {},
-    template: function() {},
+
+    /**
+     * doc: http://nytimes.github.io/backbone.stickit/
+     * @property {object} bindings - BackBone Sitckit property
+     * @see Stickit
+     */
+    bindings: undefined,
+
     constructor: function (options) {
-        var _this = this;
         _.bindAll(this, 'render', 'beforeRender', 'afterRender');
+        var _this = this,
+            render = this.render,
+            before = this.beforeRender,
+            after = this.afterRender;
+
         options || (options = {});
         _.extend(this, _.pick(options, ['channelName']));
         this.channelName || (this.channelName = _.uniqueId('channel'));
-        Backbone.View.apply(this, arguments);
 
-        this.render = _.wrap(this.render, function (render) {
-            _this.beforeRender && this.beforeRender.apply(_this);
-            render();
-            _this.afterRender && this.afterRender.apply(_this);
-            return _this;
+        this.render = _.wrap(render, function() {
+            before();
+            render.call(_this);
+            after();
         });
-
+        Backbone.View.apply(this, arguments);
     },
 
     /**
-     * Method to call to render the template.
-     * Recommend to user the beforeRender and afterRender
-     *
-     * @returns {object} the $el from this object will be returned
-     *
-     * @example
-     * render: function() {
-         *    // do you stuff
-         *
-         *    // call parent
-         *    return View.prototype.render.apply(this)
-         * }
+     * executed before render
+     */
+    beforeRender: EmptyFn,
+
+    /**
+     * executed after render
+     */
+    afterRender: EmptyFn,
+
+    /**
+     * executed during render. this is expected to be a function
+     */
+    template: EmptyFn,
+
+    /**
+     * Render the tempate
+     * @return {View} - the current view
      */
     render: function () {
         this._renderTemplate();
-        return this.$el;
+        return this;
     },
 
+    /**
+     * check if the view is rendered.
+     * @return {boolean}
+     */
     isRendered: function () {
-        return this.$el.html().length > 0;
+        return this.$el.children().length > 0;
     },
 
     /**
@@ -484,10 +521,14 @@ exports.View = Backbone.View.extend({
      * @private
      */
     _renderTemplate: function () {
-        this.$el.append(this.template && this.template((this.model && this.model.toJSON())));
-        this.model && this.stickit();
+        this.$el.empty();
+        this.$el.append(this.template && this.template.call(this, (this.model && this.model.toJSON())));
+        this.model && this.bindings && this.stickit();
     }
 });
+
+_.extend(View.prototype, Radio.Commands)
+exports.View = View;
 
 exports.RegionView = exports.View.extend({
     /**
@@ -647,8 +688,6 @@ exports.ItemView = exports.View.extend({
 })
 
 exports.CollectionItemView = exports.View.extend({});
-
-_.extend(exports.View.prototype, Radio.Commands)
 
 exports.Model = exports.Backbone.Model.extend({});
 

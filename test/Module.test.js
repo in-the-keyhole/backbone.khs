@@ -23,7 +23,7 @@ describe('Module' , function() {
 
     afterEach(function() {
         // clean up the routes on for each test
-        Backbone.history.handlers = [];
+        Backbone.Backbone.history.handlers = [];
     });
 
     it('Initial state', function () {
@@ -52,25 +52,25 @@ describe('Module' , function() {
 
     it('start module', function() {
         var module = new Module();
-        expect(Backbone.history.handlers.length).toEqual(0);
+        expect(Backbone.Backbone.history.handlers.length).toEqual(0);
         module.start();
-        expect(Backbone.history.handlers.length).toEqual(2);
+        expect(Backbone.Backbone.history.handlers.length).toEqual(2);
     });
 
     it('call start twice. ', function() {
         var module = new Module();
-        expect(Backbone.history.handlers.length).toEqual(0);
+        expect(Backbone.Backbone.history.handlers.length).toEqual(0);
         module.start();
         module.start();
-        expect(Backbone.history.handlers.length).toEqual(2);
+        expect(Backbone.Backbone.history.handlers.length).toEqual(2);
     });
 
     it('stop module', function() {
         var module = new Module();
         module.start();
-        expect(Backbone.history.handlers.length).toEqual(2);
+        expect(Backbone.Backbone.history.handlers.length).toEqual(2);
         module.stop();
-        expect(Backbone.history.handlers.length).toEqual(0);
+        expect(Backbone.Backbone.history.handlers.length).toEqual(0);
     });
 
     it('check callback all all functions', function() {
