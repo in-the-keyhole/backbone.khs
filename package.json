@@ -2,7 +2,7 @@
   "name": "backbone.khs",
   "version": "0.0.1",
   "description": "Backbone Extension",
-  "main": "dist/backbone.khs.js",
+  "main": "src/backbone.khs.js",
   "scripts": {
     "test": "./node_modules/karma/bin/karma start",
     "build": "browserify ./src/backbone.khs.js --standalone jquery -o ./dist/backbone.khs.js",
