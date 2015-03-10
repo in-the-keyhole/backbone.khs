@@ -28,6 +28,7 @@ exports.$ = exports.Backbone.$;
 
 // Short cut for the history object
 var history = exports.Backbone.history;
+exports.history = history;
 
 // Borrow this Backbone `extend` method so we cn use it as needed
 exports.extend = Backbone.Model.extend;
