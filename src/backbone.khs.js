@@ -368,7 +368,7 @@ var Module = Object.extend({
      * @private
      */
     _registerModules: function() {
-        _.each(this.modules, function(value, key) {
+        _.each(this.modules, function(value) {
             value.start.apply();
         });
     },
@@ -378,7 +378,7 @@ var Module = Object.extend({
      * @private
      */
     _deregisterModules: function() {
-        _.each(this.modules, function(value, key) {
+        _.each(this.modules, function(value) {
             value.stop.apply();
         });
     },
@@ -574,7 +574,7 @@ var View = Backbone.View.extend({
      * Method to render the view.
      * This method is use for internal use only
      *
-     * @private
+     * @protected
      */
     _renderTemplate: function () {
         this.$el.empty();
@@ -583,7 +583,7 @@ var View = Backbone.View.extend({
     }
 });
 
-_.extend(View.prototype, Radio.Commands)
+_.extend(View.prototype, Radio.Commands);
 exports.View = View;
 
 var RegionView = View.extend({
@@ -626,7 +626,7 @@ var RegionView = View.extend({
      */
     _loadRegions: function () {
         // make sure we have an object
-        this.regions || (this.regions = {})
+        this.regions || (this.regions = {});
         _.each(this.regions, function (value, key) {
             this.regions[key] = new RegionManager({
                 $el: this.$(value)
@@ -768,7 +768,7 @@ exports.ItemView = exports.View.extend({
         // call parent
         exports.View.prototype._renderTemplate.apply(this);
     }
-})
+});
 
 exports.CollectionItemView = exports.View.extend({});
 
