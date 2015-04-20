@@ -24,10 +24,10 @@ Backbone.$ = $;
 exports.Backbone = Backbone;
 
 // Set up the DOM manipulator
-exports.$ = Backbone.$;
+exports.$ = exports.Backbone.$;
 
 // Short cut for the history object
-var history = Backbone.history;
+var history = exports.Backbone.history;
 exports.history = history;
 
 // Borrow this Backbone `extend` method so we cn use it as needed
@@ -476,11 +476,9 @@ var View = Backbone.View.extend({
         this.channelName || (this.channelName = _.uniqueId('channel'));
 
         this.render = _.wrap(render, function() {
-            var val;
             before();
-            val = render.call(_this);
+            render.call(_this);
             after();
-            return val;
         });
         Backbone.View.apply(this, arguments);
     },
@@ -524,10 +522,8 @@ var View = Backbone.View.extend({
      * @private
      */
     _renderTemplate: function () {
-        var html = this.template && this.template.call(this, (this.model && this.model.toJSON()));
-        $(html).attr('data-cid', this.cid);
         this.$el.empty();
-        this.$el.append(html);
+        this.$el.append(this.template && this.template.call(this, (this.model && this.model.toJSON())));
         this.model && this.bindings && this.stickit();
     }
 });
@@ -535,11 +531,6 @@ var View = Backbone.View.extend({
 _.extend(View.prototype, Radio.Commands)
 exports.View = View;
 
-/**
- * Region View Controller
- * @extends View
- * @abstract
- */
 var RegionView = View.extend({
 
     /**
@@ -580,7 +571,7 @@ var RegionView = View.extend({
      */
     _loadRegions: function () {
         // make sure we have an object
-        this.regions = _.extend({}, this.regions);
+        this.regions || (this.regions = {})
         _.each(this.regions, function (value, key) {
             this.regions[key] = new RegionManager({
                 $el: this.$(value)
@@ -591,29 +582,10 @@ var RegionView = View.extend({
 
 exports.RegionView = RegionView;
 
-var ViewWrapper = Object.extend({
-
-    model: undefined,
-
-    view: undefined,
-
-    constructor: function (options) {
-        options || (options = {});
-        _.extend(this, _.pick(options, ['model', 'view']));
-        Object.apply(this, arguments);
-    },
-
-    remove: function() {
-        this.view.remove();
-    }
-});
-
-var CollectionView = View.extend({
+exports.CollectionView = exports.View.extend({
 
     /**
      * @property {Collection}
-     *
-     * @private
      */
     collection: undefined,
 
@@ -622,17 +594,6 @@ var CollectionView = View.extend({
      */
     childView: undefined,
 
-    /**
-     * @property {string}
-     *
-     * @private
-     */
-    childSelector:undefined,
-
-    /**
-     *
-     * @private
-     */
     children: undefined,
 
     /**
@@ -646,7 +607,7 @@ var CollectionView = View.extend({
         _.extend(this, _.pick(options, ['collection']));
         this.channelName || (this.channelName = _.uniqueId('channel'));
         this._initialEvents();
-        View.apply(this, arguments);
+        exports.View.apply(this, arguments);
     },
 
     _initialEvents: function () {
@@ -670,10 +631,9 @@ var CollectionView = View.extend({
         this.addChild(model, ChildView, index);
     },
 
-    _onCollectionRemove: function (model) {
-        var wrapper = _.find(this.children, {model:model});
-        this.children = _.without(this.children, wrapper);
-        wrapper.remove();
+    _onCollectionRemove: function () {
+        debugger;
+
     },
 
     /**
@@ -691,10 +651,7 @@ var CollectionView = View.extend({
         this.destroyChildren();
 
         // call parent
-        View.prototype._renderTemplate.apply(this);
-
-        // setup child selector
-        this.childSelector = (this.childSelector ? this.$(this.childSelector) : this.$el);
+        exports.View.prototype._renderTemplate.apply(this);
 
         this.collection.each(function(model, index) {
             this.addChild(model, this.getChildView(), index);
@@ -703,7 +660,7 @@ var CollectionView = View.extend({
 
     destroyChildren: function() {
         this.children = [];
-        this.childSelector && this.childSelector.empty();
+        this.$el.html('');
     },
 
     /**
@@ -715,27 +672,16 @@ var CollectionView = View.extend({
         return this.childView;
     },
 
-    /**
-     *
-     * @param {Model} model
-     * @param {ItemView} View
-     * @param {number} index
-     */
     addChild: function(model, View, index) {
         var view = new View({model:model});
         view._parent = this;
 
-        this.children[index] = new ViewWrapper({
-            model: model,
-            view: view
-        });
+        this.children[index] = view;
 
         view.render();
-        this.childSelector.append(view.$el);
+        this.$el.append(view.$el);
     }
 });
-
-exports.CollectionView = CollectionView;
 
 exports.ItemView = exports.View.extend({
 
@@ -758,8 +704,6 @@ exports.ItemView = exports.View.extend({
 
 exports.CollectionItemView = exports.View.extend({});
 
-exports.Model = exports.Backbone.Model.extend({
-
-});
+exports.Model = exports.Backbone.Model.extend({});
 
 exports.Collection = exports.Backbone.Collection.extend({});
