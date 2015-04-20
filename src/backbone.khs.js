@@ -330,9 +330,7 @@ var Module = Object.extend({
      *
      * @example
      * modules: {
-     *      ':account/persons': {
-     *          module: 'PersonModule'
-     *      }
+     *      ':account/persons': PersonModule
      * }
      */
     modules: undefined,
@@ -342,8 +340,10 @@ var Module = Object.extend({
         options || (options = {});
         // make sure we have new copy of this property since we overwrite the object
         this.routes = _.extend({}, _.result(this, 'routes'));
+        this.modules = _.extend({}, _.result(this, 'modules'));
         _.extend(this, _.pick(options, ['path']));
         this._buildRoutes.apply(this);
+        this._buildModules.apply(this);
         Object.apply(this, arguments);
     },
 
@@ -352,6 +352,7 @@ var Module = Object.extend({
      */
     start: function() {
         this._registerRoutes();
+        this._registerModules();
     },
 
     /**
@@ -359,6 +360,27 @@ var Module = Object.extend({
      */
     stop: function() {
         this._deregisterRoutes();
+        this._deregisterModules();
+    },
+
+    /**
+     * function to start all modules routes
+     * @private
+     */
+    _registerModules: function() {
+        _.each(this.modules, function(value, key) {
+            value.start.apply();
+        });
+    },
+
+    /**
+     * function to stop all modules routes
+     * @private
+     */
+    _deregisterModules: function() {
+        _.each(this.modules, function(value, key) {
+            value.stop.apply();
+        });
     },
 
     /**
@@ -396,13 +418,17 @@ var Module = Object.extend({
             }
 
             var wrapper = _.wrap(callback, function() {
-                var args = Array.prototype.slice.call(arguments);
-                args.shift();
+                // allow for beforeRoute to stop the route
+                if(beforeRoute(route) === false) {
+                    var args = Array.prototype.slice.call(arguments);
+                    args.shift();
+                    // make sure we call in the correct scope
+                    callback.apply(_this, args);
+                    afterRoute(route);
+                } else {
+                    // fix to the previous url.
+                }
 
-                beforeRoute(route);
-                // make sure we call in the correct scope
-                callback.apply(_this, args);
-                afterRoute(route);
             });
 
             route.key = key;
@@ -413,6 +439,18 @@ var Module = Object.extend({
         }, this);
     },
 
+    /**
+     * Function to build nested modules
+     * @private
+     */
+    _buildModules: function() {
+        var path = undefined;
+
+        _.each(this.modules, function(value, key) {
+            (key.length > 0)? path = this.path + "/" + key : path = this.path;
+            this.modules[key] = new value({path:path});
+        }, this);
+    },
 
     /**
      * @see Backbone.Router._routeToRegExp
