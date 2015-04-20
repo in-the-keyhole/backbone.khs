@@ -420,7 +420,7 @@ var Module = Object.extend({
             var wrapper = _.wrap(callback, function() {
                 // allow for beforeRoute to stop the route
                 if(beforeRoute(route) !== false) {
-                    var args = Array.prototype.slice.call(arguments);
+                    var args = (arguments[1] && route.route.exec(arguments[1])) || [];
                     args.shift();
                     // make sure we call in the correct scope
                     callback.apply(_this, args);
