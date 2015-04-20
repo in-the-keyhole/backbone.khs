@@ -315,7 +315,7 @@ var Module = Object.extend({
     path: undefined,
 
     /**
-     * @property {object} routes -
+     * @property {object} routes - backbone route paths
      *
      * @example
      * routes: {
@@ -325,10 +325,24 @@ var Module = Object.extend({
      */
     routes: undefined,
 
+    /**
+     * @property {object} modules - nested routes
+     *
+     * @example
+     * modules: {
+     *      ':account/persons': {
+     *          module: 'PersonModule'
+     *      }
+     * }
+     */
+    modules: undefined,
+
     constructor: function (options) {
         _.bindAll(this, 'start', 'stop', '_handleBeforeRoute', '_handleAfterRoute');
         options || (options = {});
-        _.extend(this, _.pick(options, ['path']))
+        // make sure we have new copy of this property since we overwrite the object
+        this.routes = _.extend({}, _.result(this, 'routes'));
+        _.extend(this, _.pick(options, ['path']));
         this._buildRoutes.apply(this);
         Object.apply(this, arguments);
     },
@@ -382,9 +396,12 @@ var Module = Object.extend({
             }
 
             var wrapper = _.wrap(callback, function() {
+                var args = Array.prototype.slice.call(arguments);
+                args.shift();
+
                 beforeRoute(route);
                 // make sure we call in the correct scope
-                callback.call(_this);
+                callback.apply(_this, args);
                 afterRoute(route);
             });
 
@@ -594,6 +611,14 @@ exports.CollectionView = exports.View.extend({
      */
     childView: undefined,
 
+    /**
+     * @property {string}
+     */
+    childSelector:undefined,
+
+    /**
+     * @private
+     */
     children: undefined,
 
     /**
@@ -653,14 +678,19 @@ exports.CollectionView = exports.View.extend({
         // call parent
         exports.View.prototype._renderTemplate.apply(this);
 
+        // set the child selector to jquery object
+        this.childSelector = (window.Object.getPrototypeOf(this).childSelector ? this.$(window.Object.getPrototypeOf(this).childSelector) : this.$el);
+
         this.collection.each(function(model, index) {
             this.addChild(model, this.getChildView(), index);
         }, this);
     },
 
     destroyChildren: function() {
+        if(this.children.length > 0) {
+            this.childSelector.empty();
+        }
         this.children = [];
-        this.$el.html('');
     },
 
     /**
@@ -679,7 +709,7 @@ exports.CollectionView = exports.View.extend({
         this.children[index] = view;
 
         view.render();
-        this.$el.append(view.$el);
+        this.childSelector.append(view.$el);
     }
 });
 
