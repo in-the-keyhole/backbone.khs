@@ -28,7 +28,6 @@ Backbone.History.prototype.loadUrl = function(fragment) {
     var bestHandler = undefined;
 
     fragment = this.fragment = this.getFragment(fragment);
-
     // TODO: MD change to standard for loop
     _.each(this.handlers, function(handler) {
         if(handler.route.test(fragment)) {
@@ -666,6 +665,7 @@ var RegionView = View.extend({
 
     constructor: function (options) {
         _.bindAll(this, '_loadRegions');
+        this.regions = _.extend({}, _.result(this, 'regions'));
         View.apply(this, arguments);
     },
 
