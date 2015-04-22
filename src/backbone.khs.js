@@ -23,6 +23,28 @@ Backbone.$ = $;
 // Make sure we have a copy of Backbone to access
 exports.Backbone = Backbone;
 
+// make sure we pick the best match for the url not the first match
+Backbone.History.prototype.loadUrl = function(fragment) {
+    var bestHandler = undefined;
+
+    fragment = this.fragment = this.getFragment(fragment);
+
+    // TODO: MD change to standard for loop
+    _.each(this.handlers, function(handler) {
+        if(handler.route.test(fragment)) {
+            if(!bestHandler || (bestHandler.score > handler.score)) {
+                bestHandler = handler;
+            }
+        }
+    });
+
+    if(bestHandler) {
+        bestHandler.callback(fragment);
+        return true;
+    }
+    return false;
+};
+
 // Set up the DOM manipulator
 exports.$ = exports.Backbone.$;
 
@@ -54,7 +76,7 @@ _.extend(Object.prototype, {
     /**
      * Abstract function for objects. This will be called on the creation of the class.
      * @param {object} options - object passed into the construction of the object
-     * @abstract 
+     * @abstract
      */
     initialize: EmptyFn
 });
@@ -69,18 +91,18 @@ exports.Object = Object;
  * @abstract
  */
 var Session = Object.extend({
-    
+
     /**
      * Track the state of the session
      * @property {boolean} authenticated
-     * @private 
+     * @private
      */
     authenticated: false,
 
     /**
      * A place to keep the username
      * @property {string} principal
-     * @private 
+     * @private
      */
     principal: undefined,
 
@@ -92,7 +114,7 @@ var Session = Object.extend({
     roles: undefined,
 
     /**
-     * Function to fetch the state of the session 
+     * Function to fetch the state of the session
      * @returns {boolean}
      */
     isAuthenticated: function () {
@@ -103,10 +125,10 @@ var Session = Object.extend({
      * Invalidates the current session
      * @fires authentication:invalidated
      * @abstract
-     * 
+     *
      * @example
      *  invalidate: function() {
-     *      var _this = this;  
+     *      var _this = this;
      *      $.ajax({
      *          url: '/login',
      *          type: 'post'
@@ -125,7 +147,7 @@ var Session = Object.extend({
      * Check to see if the the user has a role
      * @param {string} role - The role to validate
      * @returns {boolean}
-     * @abstract 
+     * @abstract
      */
     isInRole: function (role) {
 		var roles = this.roles || [];
@@ -147,11 +169,11 @@ var Session = Object.extend({
      * @param {string} password
      * @fire  authentication:success
      * @fires authentication:failed
-     * @abstract 
-     * 
+     * @abstract
+     *
      * @example
      *  authenticate: function(username, password) {
-     *      var _this = this;  
+     *      var _this = this;
      *      $.ajax({
      *          url: '/login',
      *          type: 'post'
@@ -183,13 +205,13 @@ exports.Session = Session;
  */
 var RegionManager = Object.extend({
     /**
-     * @property {object} jquery selected dom element 
-     * @private 
+     * @property {object} jquery selected dom element
+     * @private
      */
     $el: undefined,
     /**
      * @property {object} active view
-     * @private 
+     * @private
      */
     view: undefined,
 
@@ -215,7 +237,7 @@ var RegionManager = Object.extend({
     },
     /**
      * clean up the view
-	 * this remove the children by doing a jQuery.detach. 
+	 * this remove the children by doing a jQuery.detach.
 	 * this is to prevet jQuery from removing the events
 	 * form the object
      */
@@ -254,14 +276,14 @@ var Application = Object.extend({
     /**
      * Function for adding regions to the application
 	 * This will use jQuery(document) for the base selector
-     * 
-     * @param {object} object - definition of the regions  
-     * 
+     *
+     * @param {object} object - definition of the regions
+     *
      * @example
      * this.addRegion({
      *     body: '#body'
      * });
-     * 
+     *
      * this.regions.body.show(view)
      */
     addRegions: function (object) {
@@ -335,13 +357,19 @@ var Module = Object.extend({
      */
     modules: undefined,
 
+    /**
+     * @property {object} region - region to create in constructor
+     */
+    region: undefined,
+
     constructor: function (options) {
         _.bindAll(this, 'start', 'stop', '_handleBeforeRoute', '_handleAfterRoute');
         options || (options = {});
         // make sure we have new copy of this property since we overwrite the object
         this.routes = _.extend({}, _.result(this, 'routes'));
         this.modules = _.extend({}, _.result(this, 'modules'));
-        _.extend(this, _.pick(options, ['path']));
+        _.extend(this, _.pick(options, ['path', 'region']));
+        this.region && _.isObject(this.region) && (this.region = new this.region()) && this.region.render();
         this._buildRoutes.apply(this);
         this._buildModules.apply(this);
         Object.apply(this, arguments);
@@ -405,35 +433,35 @@ var Module = Object.extend({
      * @private
      */
     _buildRoutes: function() {
-        var _this = this,
-            beforeRoute = this._handleBeforeRoute,
-            afterRoute = this._handleAfterRoute;
+        var _this = this;
 
         _.each(this.routes, function(value, key) {
             var callback = this[value],
-                route = {};
+                route = {},
+                path;
 
             if(!_.isFunction(callback)) {
                 throw "route function `" + value + "` not found";
             }
 
             var wrapper = _.wrap(callback, function() {
+                var args = (arguments[1] && route.route.exec(arguments[1])) || [];
+                args.shift();
                 // allow for beforeRoute to stop the route
-                if(beforeRoute(route) !== false) {
-                    var args = (arguments[1] && route.route.exec(arguments[1])) || [];
-                    args.shift();
-                    // make sure we call in the correct scope
+                if(_this._handleBeforeRoute.apply(_this, args) !== false) {
                     callback.apply(_this, args);
-                    afterRoute(route);
+                    _this._handleAfterRoute.apply(_this.args);
                 } else {
                     // fix to the previous url.
                 }
 
             });
-
+//debugger;
+            path = (key.length > 0)? this.path + "/" + key : this.path;
             route.key = key;
-            route.route = this._routeToRegExp(key);
+            route.route = this._routeToRegExp(path);
             route.callback = wrapper;
+            route.score = path.split(':').length - 1;
 
             this.routes[key] = route
         }, this);
@@ -444,11 +472,38 @@ var Module = Object.extend({
      * @private
      */
     _buildModules: function() {
-        var path = undefined;
+        var _this = this,
+            path = undefined;
 
         _.each(this.modules, function(value, key) {
             (key.length > 0)? path = this.path + "/" + key : path = this.path;
-            this.modules[key] = new value({path:path});
+            var module = this.modules[key] = new value({path:path});
+
+            var before = _.wrap(module._handleBeforeRoute, function(method) {
+                var args = Array.prototype.slice.call(arguments, 1),
+                    scope = module;
+
+                if(_this._handleBeforeRoute.apply(_this, args) === false) {
+                    return false;
+                }
+
+                return method.apply(scope, args);
+
+            });
+
+            module._handleBeforeRoute = before;
+
+            var after = _.wrap(module._handleAfterRoute, function(method) {
+                var args = Array.prototype.slice.call(arguments, 1),
+                    scope = module;
+
+                _this._handleAfterRoute.apply(_this, args);
+                method.apply(scope, args);
+
+            })
+
+            module._handleAfterRoute = after;
+
         }, this);
     },
 
@@ -459,7 +514,6 @@ var Module = Object.extend({
      * @private
      */
     _routeToRegExp: function(route) {
-        (route.length > 0)? route = this.path + "/" + route : route = this.path;
         route = route.replace(escapeRegExp, '\\$&')
             .replace(optionalParam, '(?:$1)?')
             .replace(namedParam, function(match, optional) {
@@ -469,17 +523,7 @@ var Module = Object.extend({
         return new RegExp('^' + route + '(?:\\?([\\s\\S]*))?$');
     },
 
-    /**
-     * function to handle the
-     * @param {string} fragment - the path for the route
-     * @param {object} route - router object
-     * @param {string} route.key -
-     * @param {RegExp} route.route -
-     * @param {function} route.callback -
-     * @param {object} callback - function for callback with the scope of this
-     * @private
-     */
-    _handleBeforeRoute: EmptyFn,
+    beforeRoute: undefined,
 
     /**
      * function to handle the
@@ -491,7 +535,29 @@ var Module = Object.extend({
      * @param {object} callback - function for callback with the scope of this
      * @private
      */
-    _handleAfterRoute: EmptyFn
+    _handleBeforeRoute: function() {
+        if(_.isFunction(this.beforeRoute)) {
+            return this.beforeRoute.apply(this, arguments);
+        }
+    },
+
+    afterRoute: undefined,
+
+    /**
+     * function to handle the
+     * @param {string} fragment - the path for the route
+     * @param {object} route - router object
+     * @param {string} route.key -
+     * @param {RegExp} route.route -
+     * @param {function} route.callback -
+     * @param {object} callback - function for callback with the scope of this
+     * @private
+     */
+    _handleAfterRoute: function() {
+        if (_.isFunction(this.afterRoute)) {
+            return this.afterRoute.apply(this, arguments);
+        }
+    }
 
 });
 
