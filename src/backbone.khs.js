@@ -477,6 +477,8 @@ var Module = Object.extend({
         _.each(this.modules, function(value, key) {
             (key.length > 0)? path = this.path + "/" + key : path = this.path;
             var module = this.modules[key] = new value({path:path});
+            //TODO: MD figure out how to fix this
+            module.parent = this;
 
             var before = _.wrap(module._handleBeforeRoute, function(method) {
                 var args = Array.prototype.slice.call(arguments, 1),
