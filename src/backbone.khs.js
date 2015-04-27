@@ -455,7 +455,6 @@ var Module = Object.extend({
                 }
 
             });
-//debugger;
             path = (key.length > 0)? this.path + "/" + key : this.path;
             route.key = key;
             route.route = this._routeToRegExp(path);
@@ -476,6 +475,7 @@ var Module = Object.extend({
 
         _.each(this.modules, function(value, key) {
             (key.length > 0)? path = this.path + "/" + key : path = this.path;
+            path.substr(0,1) == '/'? path = path.substr(1): path;
             var module = this.modules[key] = new value({path:path});
             //TODO: MD figure out how to fix this
             module.parent = this;
