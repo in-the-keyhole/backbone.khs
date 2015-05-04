@@ -83,6 +83,93 @@ _.extend(Object.prototype, {
 exports.Object = Object;
 
 /**
+ * A cache object to hold and notify of changes
+ * @extends Object
+ * @mixes Bootstrap.Radio.Command
+ */
+var Cache = Object.extend({
+
+    /**
+     * @property {object} store the objects
+     * @private
+     */
+    store: undefined,
+
+    application: undefined,
+
+    constructor: function (options) {
+        options || (options = {});
+        _.bindAll(this, 'has', 'put', 'get', 'remove');
+        this.store = {};
+        Object.apply(this, arguments);
+    },
+
+    has: function(key) {
+        return !!this.get(key);
+    },
+
+    put: function(key, object, options) {
+        this.store[key] = {
+            object: object,
+            expired: false,
+            expire: _.result(options, 'expire', 0),
+            remove: this._buildExpireFunction(key, object)
+        }
+    },
+
+    get: function(key) {
+        var cache = _.result(this.store, key);
+        if(cache.expired) {
+            this.remove(key);
+            return undefined;
+        } else {
+            return cache.object;
+        }
+
+    },
+
+    remove: function(key) {
+        var cache = this.get(key);
+        // make sure we remove any timer
+        delete this.store[key];
+    },
+
+    destory: function() {
+
+    },
+
+    _buildExpireFunction: function(key, object, expire) {
+        var _this = this,
+            _key = key,
+            _object = object,
+            _func = function() {
+                // make sure we have the same instance that we started with.
+                // if not do not remove this key. This is to catch case where we
+                // expire a key and the delay function is still active
+                if(_object === _this.get(_key)) {
+                    _this.remove(_key);
+                }
+            },
+            _args = [expire, _func, _this];
+
+        if(_.isNumber(expire) && expire > 0) {
+            return function() {
+                clearTimeout(_.delay(_func, expire));
+            }
+        } else if(_.isString(expire) && !_.isEmpty(expire) && this.application) {
+            var _args = [expire, _func, _this];
+            this.application.comply.apply(this.application, _args);
+            return function() {
+
+            }
+        }
+        return _.noop();
+    }
+});
+
+exports.Cache = Cache;
+exports.cache = new Cache();
+/**
  * An abstract class to give some basic structure around the session.
  * @param {object} options - configurable options for the class.
  * @extends Object
@@ -269,6 +356,7 @@ var Application = Object.extend({
         _.bindAll(this, 'addRegions');
 		_.extend(this, _.pick(options, ['channelName']));
         this.channelName || (this.channelName = _.uniqueId('channel'));
+        exports.cache.application = this;
         Object.apply(this, arguments);
     },
 
@@ -347,7 +435,7 @@ var Module = Object.extend({
     routes: undefined,
 
     /**
-     * @property {object} modules - nested routes
+     * @property {Module} modules - nested routes
      *
      * @example
      * modules: {
@@ -357,9 +445,11 @@ var Module = Object.extend({
     modules: undefined,
 
     /**
-     * @property {object} region - region to create in constructor
+     * @property {RegionView} region - region to create in constructor
      */
     region: undefined,
+
+    regionManager: undefined,
 
     constructor: function (options) {
         _.bindAll(this, 'start', 'stop', '_handleBeforeRoute', '_handleAfterRoute');
@@ -367,7 +457,7 @@ var Module = Object.extend({
         // make sure we have new copy of this property since we overwrite the object
         this.routes = _.extend({}, _.result(this, 'routes'));
         this.modules = _.extend({}, _.result(this, 'modules'));
-        _.extend(this, _.pick(options, ['path', 'region']));
+        _.extend(this, _.pick(options, ['path', 'region', 'regionManager']));
         this.region && _.isObject(this.region) && (this.region = new this.region()) && this.region.render();
         this._buildRoutes.apply(this);
         this._buildModules.apply(this);
@@ -470,15 +560,19 @@ var Module = Object.extend({
      * @private
      */
     _buildModules: function() {
-        var _this = this,
-            path = undefined;
+        var _this = this;
 
         _.each(this.modules, function(value, key) {
+            var path, module, region;
             (key.length > 0)? path = this.path + "/" + key : path = this.path;
             path.substr(0,1) == '/'? path = path.substr(1): path;
-            var module = this.modules[key] = new value({path:path});
-            //TODO: MD figure out how to fix this
-            module.parent = this;
+
+            if(typeof value === 'object') {
+                region = window.Object.keys(value)[0];
+                module = this.modules[key] = new value[region]({path:path, regionManager: this.region.regions[region]});
+            } else {
+                module = this.modules[key] = new value({path:path});
+            }
 
             var before = _.wrap(module._handleBeforeRoute, function(method) {
                 var args = Array.prototype.slice.call(arguments, 1),
@@ -527,7 +621,8 @@ var Module = Object.extend({
     beforeRoute: undefined,
 
     /**
-     * function to handle the
+     * function to handle the the beforeRender. Also add region to RegionsManager
+     *
      * @param {string} fragment - the path for the route
      * @param {object} route - router object
      * @param {string} route.key -
@@ -537,6 +632,9 @@ var Module = Object.extend({
      * @private
      */
     _handleBeforeRoute: function() {
+        if(window.Object.getPrototypeOf(this).region && this.region && this.regionManager) {
+            this.regionManager.show(this.region);
+        }
         if(_.isFunction(this.beforeRoute)) {
             return this.beforeRoute.apply(this, arguments);
         }
@@ -684,6 +782,12 @@ var RegionView = View.extend({
 
         // auto build the regions
         this._loadRegions.call(this);
+    },
+
+    set: function(region, view) {
+        if(this.regions) {
+            this.regions[region].show(view);
+        }
     },
 
     /**
