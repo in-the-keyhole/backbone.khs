@@ -24,20 +24,20 @@ Backbone.$ = $;
 exports.Backbone = Backbone;
 
 // make sure we pick the best match for the url not the first match
-Backbone.History.prototype.loadUrl = function(fragment) {
+Backbone.History.prototype.loadUrl = function (fragment) {
     var bestHandler = undefined;
 
     fragment = this.fragment = this.getFragment(fragment);
     // TODO: MD change to standard for loop
-    _.each(this.handlers, function(handler) {
-        if(handler.route.test(fragment)) {
-            if(!bestHandler || (bestHandler.score > handler.score)) {
+    _.each(this.handlers, function (handler) {
+        if (handler.route.test(fragment)) {
+            if (!bestHandler || (bestHandler.score > handler.score)) {
                 bestHandler = handler;
             }
         }
     });
 
-    if(bestHandler) {
+    if (bestHandler) {
         bestHandler.callback(fragment);
         return true;
     }
@@ -95,6 +95,10 @@ var Cache = Object.extend({
      */
     store: undefined,
 
+    /**
+     * @property {Application}
+     * @private
+     */
     application: undefined,
 
     constructor: function (options) {
@@ -104,65 +108,75 @@ var Cache = Object.extend({
         Object.apply(this, arguments);
     },
 
-    has: function(key) {
+    has: function (key) {
         return !!this.get(key);
     },
 
-    put: function(key, object, options) {
+    put: function (key, object, options) {
+        var expire = _.result(options, 'expire', 0)
+        // make sure we don't have a matching key
+        this.remove(key);
+        // add new object to the store
         this.store[key] = {
             object: object,
-            expired: false,
-            expire: _.result(options, 'expire', 0),
-            remove: this._buildExpireFunction(key, object)
-        }
+            expired: false, // not sure if this is needed
+            expire: expire,
+            destroy: this._buildExpireFunction(key, object, expire)
+        };
     },
 
-    get: function(key) {
+    get: function (key) {
         var cache = _.result(this.store, key);
-        if(cache.expired) {
-            this.remove(key);
-            return undefined;
-        } else {
-            return cache.object;
-        }
-
-    },
-
-    remove: function(key) {
-        var cache = this.get(key);
-        // make sure we remove any timer
-        delete this.store[key];
-    },
-
-    destory: function() {
-
-    },
-
-    _buildExpireFunction: function(key, object, expire) {
-        var _this = this,
-            _key = key,
-            _object = object,
-            _func = function() {
-                // make sure we have the same instance that we started with.
-                // if not do not remove this key. This is to catch case where we
-                // expire a key and the delay function is still active
-                if(_object === _this.get(_key)) {
-                    _this.remove(_key);
-                }
-            },
-            _args = [expire, _func, _this];
-
-        if(_.isNumber(expire) && expire > 0) {
-            return function() {
-                clearTimeout(_.delay(_func, expire));
-            }
-        } else if(_.isString(expire) && !_.isEmpty(expire) && this.application) {
-            var _args = [expire, _func, _this];
-            this.application.comply.apply(this.application, _args);
-            return function() {
-
+        if(cache) {
+            if (cache.expired) {
+                this.remove(key);
+            } else {
+                return cache.object;
             }
         }
+        return undefined;
+    },
+
+    remove: function (key) {
+        var cache = _.result(this.store, key);
+        if (cache) {
+            cache.destroy();
+            // make sure we remove any timer
+            delete this.store[key];
+        }
+    },
+
+    _buildExpireFunction: function (key, object, expire) {
+        var func = _.bind(function (key, object, expire) {
+            debugger;
+            // make sure we have the same instance that we started with.
+            // if not do not remove this key. This is to catch case where we
+            // expire a key and the delay function is still active
+            if (object === this.get(key)) {
+                this.remove(key);
+            }
+        }, this, arguments);
+
+        if (_.isNumber(expire) && expire > 0) {
+            var delay = _.delay(func, expire);
+            return _.partial(clearTimeout, delay);
+        } else if (_.isString(expire) && !_.isEmpty(expire)) {
+            debugger;
+            this.comply(expire, func);
+            return _.bind(this.stopComplying, this, expire, func);
+        }
+
+        //    return _.bind(function(_key) {
+        //        clearTimeout(_.delay(_func, expire, [_key]));
+        //    })
+        //
+        //} else if(_.isString(expire) && !_.isEmpty(expire) && this.application) {
+        //    var _args = [expire, _func, _this];
+        //    this.application.comply.apply(this.application, _args);
+        //    return function() {
+        //
+        //    }
+        //}
         return _.noop();
     }
 });
@@ -223,7 +237,7 @@ var Session = Object.extend({
      *      });
      *  }
      */
-    invalidate: function() {
+    invalidate: function () {
         this.authenticated = false;
         this.roles = undefined;
         this.command('authentication:invalidated');
@@ -236,8 +250,8 @@ var Session = Object.extend({
      * @abstract
      */
     isInRole: function (role) {
-		var roles = this.roles || [];
-		return _.indexOf(roles, role) !== -1;
+        var roles = this.roles || [];
+        return _.indexOf(roles, role) !== -1;
     },
 
     /**
@@ -245,7 +259,7 @@ var Session = Object.extend({
      * @param {string} role - role for the user
      * @return {string[]} roles added
      */
-    addRoles: function(role) {
+    addRoles: function (role) {
         this.roles = _.union(this.roles || [], Array.prototype.slice.call(arguments));
     },
 
@@ -305,13 +319,13 @@ var RegionManager = Object.extend({
         options || (options = {});
         _.bindAll(this, 'show', 'remove');
         _.extend(this, _.pick(options, ['$el']));
-		Object.apply(this, arguments);
+        Object.apply(this, arguments);
     },
 
     /**
      * show the view with the $el that was pasted during the creation
      * on the class. This will call a remove function to clean up the
-	 * current $el. The view is added to the $el with jQuery.append.
+     * current $el. The view is added to the $el with jQuery.append.
      * @param {object} view - this expected to be a View object
      */
     show: function (view) {
@@ -323,9 +337,9 @@ var RegionManager = Object.extend({
     },
     /**
      * clean up the view
-	 * this remove the children by doing a jQuery.detach.
-	 * this is to prevet jQuery from removing the events
-	 * form the object
+     * this remove the children by doing a jQuery.detach.
+     * this is to prevet jQuery from removing the events
+     * form the object
      */
     remove: function () {
         return this.$el.children().detach();
@@ -354,7 +368,7 @@ var Application = Object.extend({
 
     constructor: function (options) {
         _.bindAll(this, 'addRegions');
-		_.extend(this, _.pick(options, ['channelName']));
+        _.extend(this, _.pick(options, ['channelName']));
         this.channelName || (this.channelName = _.uniqueId('channel'));
         exports.cache.application = this;
         Object.apply(this, arguments);
@@ -362,7 +376,7 @@ var Application = Object.extend({
 
     /**
      * Function for adding regions to the application
-	 * This will use jQuery(document) for the base selector
+     * This will use jQuery(document) for the base selector
      *
      * @param {object} object - definition of the regions
      *
@@ -374,7 +388,7 @@ var Application = Object.extend({
      * this.regions.body.show(view)
      */
     addRegions: function (object) {
-        this.regions || (this.regions= {});
+        this.regions || (this.regions = {});
         object || (object = {});
         _.each(object, function (value, key) {
             this.regions[key] = new RegionManager({
@@ -390,9 +404,9 @@ exports.Application = Application;
 // Cached regular expressions for matching named param parts and splatted
 // parts of route strings.
 var optionalParam = /\((.*?)\)/g;
-var namedParam    = /(\(\?)?:\w+/g;
-var splatParam    = /\*\w+/g;
-var escapeRegExp  = /[\-{}\[\]+?.,\\\^$|#\s]/g;
+var namedParam = /(\(\?)?:\w+/g;
+var splatParam = /\*\w+/g;
+var escapeRegExp = /[\-{}\[\]+?.,\\\^$|#\s]/g;
 
 /**
  * Controller to handel navigation flow for a module
@@ -467,7 +481,7 @@ var Module = Object.extend({
     /**
      *
      */
-    start: function() {
+    start: function () {
         this._registerRoutes();
         this._registerModules();
     },
@@ -475,7 +489,7 @@ var Module = Object.extend({
     /**
      *
      */
-    stop: function() {
+    stop: function () {
         this._deregisterRoutes();
         this._deregisterModules();
     },
@@ -484,8 +498,8 @@ var Module = Object.extend({
      * function to start all modules routes
      * @private
      */
-    _registerModules: function() {
-        _.each(this.modules, function(value) {
+    _registerModules: function () {
+        _.each(this.modules, function (value) {
             value.start.apply();
         });
     },
@@ -494,8 +508,8 @@ var Module = Object.extend({
      * function to stop all modules routes
      * @private
      */
-    _deregisterModules: function() {
-        _.each(this.modules, function(value) {
+    _deregisterModules: function () {
+        _.each(this.modules, function (value) {
             value.stop.apply();
         });
     },
@@ -504,7 +518,7 @@ var Module = Object.extend({
      * function to register route with Backbone.history
      * @private
      */
-    _registerRoutes: function() {
+    _registerRoutes: function () {
         history.handlers = _.uniq(_.union(history.handlers, _.values(this.routes)));
     },
 
@@ -512,7 +526,7 @@ var Module = Object.extend({
      * function to remove route from Backbone.history
      * @private
      */
-    _deregisterRoutes: function() {
+    _deregisterRoutes: function () {
         history.handlers = _.difference(history.handlers, _.values(this.routes));
     },
 
@@ -521,23 +535,23 @@ var Module = Object.extend({
      * @throws function not found
      * @private
      */
-    _buildRoutes: function() {
+    _buildRoutes: function () {
         var _this = this;
 
-        _.each(this.routes, function(value, key) {
+        _.each(this.routes, function (value, key) {
             var callback = this[value],
                 route = {},
                 path;
 
-            if(!_.isFunction(callback)) {
+            if (!_.isFunction(callback)) {
                 throw "route function `" + value + "` not found";
             }
 
-            var wrapper = _.wrap(callback, function() {
+            var wrapper = _.wrap(callback, function () {
                 var args = (arguments[1] && route.route.exec(arguments[1])) || [];
                 args.shift();
                 // allow for beforeRoute to stop the route
-                if(_this._handleBeforeRoute.apply(_this, args) !== false) {
+                if (_this._handleBeforeRoute.apply(_this, args) !== false) {
                     callback.apply(_this, args);
                     _this._handleAfterRoute.apply(_this.args);
                 } else {
@@ -545,7 +559,7 @@ var Module = Object.extend({
                 }
 
             });
-            path = (key.length > 0)? this.path + "/" + key : this.path;
+            path = (key.length > 0) ? this.path + "/" + key : this.path;
             route.key = key;
             route.route = this._routeToRegExp(path);
             route.callback = wrapper;
@@ -559,26 +573,29 @@ var Module = Object.extend({
      * Function to build nested modules
      * @private
      */
-    _buildModules: function() {
+    _buildModules: function () {
         var _this = this;
 
-        _.each(this.modules, function(value, key) {
+        _.each(this.modules, function (value, key) {
             var path, module, region;
-            (key.length > 0)? path = this.path + "/" + key : path = this.path;
-            path.substr(0,1) == '/'? path = path.substr(1): path;
+            (key.length > 0) ? path = this.path + "/" + key : path = this.path;
+            path.substr(0, 1) == '/' ? path = path.substr(1) : path;
 
-            if(typeof value === 'object') {
+            if (typeof value === 'object') {
                 region = window.Object.keys(value)[0];
-                module = this.modules[key] = new value[region]({path:path, regionManager: this.region.regions[region]});
+                module = this.modules[key] = new value[region]({
+                    path: path,
+                    regionManager: this.region.regions[region]
+                });
             } else {
-                module = this.modules[key] = new value({path:path});
+                module = this.modules[key] = new value({path: path});
             }
 
-            var before = _.wrap(module._handleBeforeRoute, function(method) {
+            var before = _.wrap(module._handleBeforeRoute, function (method) {
                 var args = Array.prototype.slice.call(arguments, 1),
                     scope = module;
 
-                if(_this._handleBeforeRoute.apply(_this, args) === false) {
+                if (_this._handleBeforeRoute.apply(_this, args) === false) {
                     return false;
                 }
 
@@ -588,7 +605,7 @@ var Module = Object.extend({
 
             module._handleBeforeRoute = before;
 
-            var after = _.wrap(module._handleAfterRoute, function(method) {
+            var after = _.wrap(module._handleAfterRoute, function (method) {
                 var args = Array.prototype.slice.call(arguments, 1),
                     scope = module;
 
@@ -608,10 +625,10 @@ var Module = Object.extend({
      * @return {RegExp}
      * @private
      */
-    _routeToRegExp: function(route) {
+    _routeToRegExp: function (route) {
         route = route.replace(escapeRegExp, '\\$&')
             .replace(optionalParam, '(?:$1)?')
-            .replace(namedParam, function(match, optional) {
+            .replace(namedParam, function (match, optional) {
                 return optional ? match : '([^/?]+)';
             })
             .replace(splatParam, '([^?]*?)');
@@ -631,11 +648,11 @@ var Module = Object.extend({
      * @param {object} callback - function for callback with the scope of this
      * @private
      */
-    _handleBeforeRoute: function() {
-        if(window.Object.getPrototypeOf(this).region && this.region && this.regionManager) {
+    _handleBeforeRoute: function () {
+        if (window.Object.getPrototypeOf(this).region && this.region && this.regionManager) {
             this.regionManager.show(this.region);
         }
-        if(_.isFunction(this.beforeRoute)) {
+        if (_.isFunction(this.beforeRoute)) {
             return this.beforeRoute.apply(this, arguments);
         }
     },
@@ -652,7 +669,7 @@ var Module = Object.extend({
      * @param {object} callback - function for callback with the scope of this
      * @private
      */
-    _handleAfterRoute: function() {
+    _handleAfterRoute: function () {
         if (_.isFunction(this.afterRoute)) {
             return this.afterRoute.apply(this, arguments);
         }
@@ -695,7 +712,7 @@ var View = Backbone.View.extend({
         _.extend(this, _.pick(options, ['channelName']));
         this.channelName || (this.channelName = _.uniqueId('channel'));
 
-        this.render = _.wrap(render, function() {
+        this.render = _.wrap(render, function () {
             before();
             render.call(_this);
             after();
@@ -743,9 +760,29 @@ var View = Backbone.View.extend({
      */
     _renderTemplate: function () {
         this.$el.empty();
-        this.$el.append(this.template && this.template.call(this, (this.model && this.model.toJSON())));
+        this.$el.append(this.template && this.template(this._getTemplateData()));
         this.model && this.bindings && this.stickit();
-    }
+    },
+
+    /**
+     *
+     * @return {object}
+     * @protected
+     */
+    _getTemplateData: function() {
+        var data = undefined;
+        if(this.model) {
+            if(this.model instanceof Model) {
+                data = this.model.toJSON();
+            } else {
+                data = {};
+                _.each(this.model, function(value, key) {
+                    data[key] = value.toJSON();
+                }, this);
+            }
+        }
+        return data;
+    },
 });
 
 _.extend(View.prototype, Radio.Commands);
@@ -770,22 +807,22 @@ var RegionView = View.extend({
     },
 
     /**
-    * Method to render the view.
-    * This method is use for internal use only
-    *
-    * @see View._renderTemplate
-    * @private
-    */
+     * Method to render the view.
+     * This method is use for internal use only
+     *
+     * @see View._renderTemplate
+     * @private
+     */
     _renderTemplate: function () {
         // call parent
-       View.prototype._renderTemplate.call(this);
+        View.prototype._renderTemplate.call(this);
 
         // auto build the regions
         this._loadRegions.call(this);
     },
 
-    set: function(region, view) {
-        if(this.regions) {
+    set: function (region, view) {
+        if (this.regions) {
             this.regions[region].show(view);
         }
     },
@@ -824,7 +861,7 @@ exports.CollectionView = exports.View.extend({
     /**
      * @property {string}
      */
-    childSelector:undefined,
+    childSelector: undefined,
 
     /**
      * @private
@@ -878,8 +915,8 @@ exports.CollectionView = exports.View.extend({
      * @see View
      * @private
      */
-    _renderTemplate: function() {
-        if(!this.collection) {
+    _renderTemplate: function () {
+        if (!this.collection) {
             throw "CollectionView requires a collection to be defined."
         }
 
@@ -891,13 +928,13 @@ exports.CollectionView = exports.View.extend({
         // set the child selector to jquery object
         this.childSelector = (window.Object.getPrototypeOf(this).childSelector ? this.$(window.Object.getPrototypeOf(this).childSelector) : this.$el);
 
-        this.collection.each(function(model, index) {
+        this.collection.each(function (model, index) {
             this.addChild(model, this.getChildView(), index);
         }, this);
     },
 
-    destroyChildren: function() {
-        if(this.children.length > 0) {
+    destroyChildren: function () {
+        if (this.children.length > 0) {
             this.childSelector.empty();
         }
         this.children = [];
@@ -908,12 +945,12 @@ exports.CollectionView = exports.View.extend({
      *
      * @returns {ItemView}
      */
-    getChildView: function ( ) {
+    getChildView: function () {
         return this.childView;
     },
 
-    addChild: function(model, View, index) {
-        var view = new View({model:model});
+    addChild: function (model, View, index) {
+        var view = new View({model: model});
         view._parent = this;
 
         this.children[index] = view;
@@ -944,6 +981,7 @@ exports.ItemView = exports.View.extend({
 
 exports.CollectionItemView = exports.View.extend({});
 
-exports.Model = exports.Backbone.Model.extend({});
+var Model = exports.Backbone.Model.extend({});
+exports.Model = Model;
 
 exports.Collection = exports.Backbone.Collection.extend({});
