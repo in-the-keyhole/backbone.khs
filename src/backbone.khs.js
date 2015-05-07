@@ -180,7 +180,6 @@ var Cache = Object.extend({
      */
     _buildExpireFunction: function (key, object, expire) {
         var func = _.bind(function (key, object, expire) {
-            debugger;
             // make sure we have the same instance that we started with.
             // if not do not remove this key. This is to catch case where we
             // expire a key and the delay function is still active
