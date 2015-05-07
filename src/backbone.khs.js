@@ -95,23 +95,34 @@ var Cache = Object.extend({
      */
     store: undefined,
 
-    /**
-     * @property {Application}
-     * @private
-     */
-    application: undefined,
-
     constructor: function (options) {
         options || (options = {});
         _.bindAll(this, 'has', 'put', 'get', 'remove');
+        this.channelName || (this.channelName = _.uniqueId('channel'));
         this.store = {};
         Object.apply(this, arguments);
     },
 
+    /**
+     *
+     * Check to see if this key exist
+     *
+     * @param key
+     * @return {boolean}
+     */
     has: function (key) {
         return !!this.get(key);
     },
 
+    /**
+     * add new object to the cache store
+     *
+     * @param key {string} - ref key for the store
+     * @param object {object} - object to be added to cache
+     * @param options {object} - config options for cache
+     * @param options.expire {Number} - invokes remove after wait milliseconds
+     * @param options.expire {string} - invokes remove after event is called on cache
+     */
     put: function (key, object, options) {
         var expire = _.result(options, 'expire', 0)
         // make sure we don't have a matching key
@@ -125,6 +136,12 @@ var Cache = Object.extend({
         };
     },
 
+    /**
+     * get the object from the cache store
+     *
+     * @param key {string}
+     * @return {*}
+     */
     get: function (key) {
         var cache = _.result(this.store, key);
         if(cache) {
@@ -137,6 +154,11 @@ var Cache = Object.extend({
         return undefined;
     },
 
+    /**
+     * removes the object from the cache store
+     *
+     * @param key {string}
+     */
     remove: function (key) {
         var cache = _.result(this.store, key);
         if (cache) {
@@ -146,6 +168,16 @@ var Cache = Object.extend({
         }
     },
 
+    /**
+     *
+     * @param key
+     * @param object
+     * @param expire
+     *
+     * @returns {Function}
+     *
+     * @private
+     */
     _buildExpireFunction: function (key, object, expire) {
         var func = _.bind(function (key, object, expire) {
             debugger;
@@ -155,31 +187,20 @@ var Cache = Object.extend({
             if (object === this.get(key)) {
                 this.remove(key);
             }
-        }, this, arguments);
+        }, this, key, object, expire);
 
         if (_.isNumber(expire) && expire > 0) {
             var delay = _.delay(func, expire);
             return _.partial(clearTimeout, delay);
         } else if (_.isString(expire) && !_.isEmpty(expire)) {
-            debugger;
             this.comply(expire, func);
             return _.bind(this.stopComplying, this, expire, func);
         }
-
-        //    return _.bind(function(_key) {
-        //        clearTimeout(_.delay(_func, expire, [_key]));
-        //    })
-        //
-        //} else if(_.isString(expire) && !_.isEmpty(expire) && this.application) {
-        //    var _args = [expire, _func, _this];
-        //    this.application.comply.apply(this.application, _args);
-        //    return function() {
-        //
-        //    }
-        //}
         return _.noop();
     }
 });
+
+_.extend(Cache.prototype, Radio.Commands);
 
 exports.Cache = Cache;
 exports.cache = new Cache();
@@ -370,7 +391,6 @@ var Application = Object.extend({
         _.bindAll(this, 'addRegions');
         _.extend(this, _.pick(options, ['channelName']));
         this.channelName || (this.channelName = _.uniqueId('channel'));
-        exports.cache.application = this;
         Object.apply(this, arguments);
     },
 
