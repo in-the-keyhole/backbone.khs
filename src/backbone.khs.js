@@ -194,8 +194,8 @@ var Cache = Object.extend({
             var delay = _.delay(func, expire);
             return _.partial(clearTimeout, delay);
         } else if (_.isString(expire) && !_.isEmpty(expire)) {
-            this.comply(expire, func);
-            return _.bind(this.stopComplying, this, expire, func);
+            this.on(expire, func);
+            return _.bind(this.off, this, expire, func);
         }
         return _.noop();
     }
