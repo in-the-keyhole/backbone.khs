@@ -134,6 +134,7 @@ var Cache = Object.extend({
             expire: expire,
             destroy: this._buildExpireFunction(key, object, expire)
         };
+        this.trigger('cache:'+key+':put', object);
     },
 
     /**
@@ -165,6 +166,7 @@ var Cache = Object.extend({
             cache.destroy();
             // make sure we remove any timer
             delete this.store[key];
+            this.trigger('cache:'+key+':remove');
         }
     },
 
@@ -199,6 +201,7 @@ var Cache = Object.extend({
     }
 });
 
+_.extend(Cache.prototype, Backbone.Events);
 _.extend(Cache.prototype, Radio.Commands);
 
 exports.Cache = Cache;
@@ -418,6 +421,7 @@ var Application = Object.extend({
 });
 
 _.extend(Application.prototype, Radio.Commands);
+_.extend(Application.prototype, Backbone.Events);
 exports.Application = Application;
 
 // Cached regular expressions for matching named param parts and splatted
@@ -610,6 +614,17 @@ var Module = Object.extend({
                 module = this.modules[key] = new value({path: path});
             }
 
+            var command = _.wrap(module.command, function(method) {
+                var args = Array.prototype.slice.call(arguments, 1),
+                    scope = module;
+
+                method.apply(scope, args);
+
+                _this.command.apply(_this, args);
+            });
+
+            module.command = command;
+
             var before = _.wrap(module._handleBeforeRoute, function (method) {
                 var args = Array.prototype.slice.call(arguments, 1),
                     scope = module;
@@ -631,7 +646,7 @@ var Module = Object.extend({
                 _this._handleAfterRoute.apply(_this, args);
                 method.apply(scope, args);
 
-            })
+            });
 
             module._handleAfterRoute = after;
 
@@ -697,6 +712,7 @@ var Module = Object.extend({
 });
 
 exports.Module = Module;
+_.extend(Module.prototype, Radio.Commands);
 
 /**
  * View Controller
@@ -801,7 +817,7 @@ var View = Backbone.View.extend({
             }
         }
         return data;
-    },
+    }
 });
 
 _.extend(View.prototype, Radio.Commands);
