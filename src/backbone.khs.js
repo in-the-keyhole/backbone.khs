@@ -355,6 +355,7 @@ var RegionManager = Object.extend({
             view.render();
         }
         this.remove();
+        this.view = view;
         return this.$el.append(view && view.$el);
     },
     /**
@@ -875,6 +876,14 @@ var RegionView = View.extend({
                 $el: this.$(value)
             });
         }, this);
+    },
+
+    remove: function() {
+        // clean up each region. make sure we remove each view
+        _.each(this.regions, function(val) {
+            val.view && val.view.remove();
+        });
+        View.prototype.remove.apply(this, arguments);
     }
 });
 
