@@ -489,7 +489,7 @@ var Module = Object.extend({
     regionManager: undefined,
 
     constructor: function (options) {
-        _.bindAll(this, 'start', 'stop', '_handleBeforeRoute', '_handleAfterRoute');
+        _.bindAll(this, 'start', 'stop', '_handleBeforeRoute', '_handleAfterRoute', '_handleBeforeStart');
         options || (options = {});
         // make sure we have new copy of this property since we overwrite the object
         this.routes = _.extend({}, _.result(this, 'routes'));
@@ -501,10 +501,20 @@ var Module = Object.extend({
         Object.apply(this, arguments);
     },
 
+
+    _handleBeforeStart: function () {
+        if (_.isFunction(this.beforeStart)) {
+            return this.beforeStart.apply(this, arguments);
+        }
+    },
+
+    beforeStart: _.noop,
+
     /**
      *
      */
     start: function () {
+        this._handleBeforeStart.apply(this, arguments);
         this._registerRoutes();
         this._registerModules();
     },
