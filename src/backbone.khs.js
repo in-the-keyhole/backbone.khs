@@ -134,7 +134,7 @@ var Cache = Object.extend({
             expire: expire,
             destroy: this._buildExpireFunction(key, object, expire)
         };
-        this.trigger('cache:'+key+':put', object);
+        this.trigger('cache:' + key + ':put', object);
     },
 
     /**
@@ -145,7 +145,7 @@ var Cache = Object.extend({
      */
     get: function (key) {
         var cache = _.result(this.store, key);
-        if(cache) {
+        if (cache) {
             if (cache.expired) {
                 this.remove(key);
             } else {
@@ -165,7 +165,7 @@ var Cache = Object.extend({
         if (cache) {
             // make sure we remove any timer
             delete this.store[key];
-            this.trigger('cache:'+key+':remove');
+            this.trigger('cache:' + key + ':remove');
         }
     },
 
@@ -510,6 +510,30 @@ var Module = Object.extend({
 
     beforeStart: _.noop,
 
+    _handleAfterStart: function () {
+        if (_.isFunction(this.afterStart)) {
+            return this.afterStart.apply(this, arguments);
+        }
+    },
+
+    afterStart: _.noop,
+
+    _handleBeforeEnd: function () {
+        if (_.isFunction(this.beforeEnd)) {
+            return this.beforeEnd.apply(this, arguments);
+        }
+    },
+
+    beforeEnd: _.noop,
+
+    _handleAfterEnd: function () {
+        if (_.isFunction(this.afterEnd)) {
+            return this.afterEnd.apply(this, arguments);
+        }
+    },
+
+    afterEnd: _.noop,
+
     /**
      *
      */
@@ -517,14 +541,17 @@ var Module = Object.extend({
         this._handleBeforeStart.apply(this, arguments);
         this._registerRoutes();
         this._registerModules();
+        this._handleAfterStart.apply(this, arguments);
     },
 
     /**
      *
      */
     stop: function () {
+        this._handleBeforeEnd.apply(this, arguments);
         this._deregisterRoutes();
         this._deregisterModules();
+        this._handleAfterEnd.apply(this, arguments);
     },
 
     /**
@@ -570,7 +597,6 @@ var Module = Object.extend({
      */
     _buildRoutes: function () {
         var _this = this;
-
         _.each(this.routes, function (value, key) {
             var callback = this[value],
                 route = {},
@@ -580,18 +606,20 @@ var Module = Object.extend({
                 throw "route function `" + value + "` not found";
             }
 
-            var wrapper = _.wrap(callback, function () {
-                var args = (arguments[1] && route.route.exec(arguments[1])) || [];
-                args.shift();
-                // allow for beforeRoute to stop the route
-                if (_this._handleBeforeRoute.apply(_this, args) !== false) {
-                    callback.apply(_this, args);
-                    _this._handleAfterRoute.apply(_this.args);
-                } else {
-                    // fix to the previous url.
-                }
+            var wrapper = _.wrap(callback, function (method) {
+                var args = Array.prototype.slice.call(arguments, 2),
+                    args2 = args.slice(0),
+                    done = _.bind(function() {
+                        method.apply(this, args2);
+                        _this._handleAfterRoute.apply(this, args2);
+                    }, _this);
+
+                args.unshift(done);
+
+                _this._handleBeforeRoute.apply(_this, args);
 
             });
+
             path = (key.length > 0) ? this.path + "/" + key : this.path;
             route.key = key;
             route.route = this._routeToRegExp(path);
@@ -607,10 +635,10 @@ var Module = Object.extend({
      * @private
      */
     _buildModules: function () {
-        var _this = this;
-
         _.each(this.modules, function (value, key) {
-            var path, module, region;
+            var path, module, region,
+                _this = this;
+
             (key.length > 0) ? path = this.path + "/" + key : path = this.path;
             path.substr(0, 1) == '/' ? path = path.substr(1) : path;
 
@@ -624,7 +652,7 @@ var Module = Object.extend({
                 module = this.modules[key] = new value({path: path});
             }
 
-            var command = _.wrap(module.command, function(method) {
+            var command = _.wrap(module.command, function (method) {
                 var args = Array.prototype.slice.call(arguments, 1),
                     scope = module;
 
@@ -637,14 +665,14 @@ var Module = Object.extend({
 
             var before = _.wrap(module._handleBeforeRoute, function (method) {
                 var args = Array.prototype.slice.call(arguments, 1),
-                    scope = module;
+                    scope = module,
+                    args2 = args.slice(1),
+                    done = _.bind(function() {
+                        method.apply(scope, args);
+                    }, _this);
 
-                if (_this._handleBeforeRoute.apply(_this, args) === false) {
-                    return false;
-                }
-
-                return method.apply(scope, args);
-
+                args2.unshift(done);
+                _this._handleBeforeRoute.apply(_this, args2);
             });
 
             module._handleBeforeRoute = before;
@@ -692,13 +720,19 @@ var Module = Object.extend({
      * @param {object} callback - function for callback with the scope of this
      * @private
      */
-    _handleBeforeRoute: function () {
+    _handleBeforeRoute: function (done) {
         if (window.Object.getPrototypeOf(this).region && this.region && this.regionManager) {
             this.regionManager.show(this.region);
         }
         if (_.isFunction(this.beforeRoute)) {
-            return this.beforeRoute.apply(this, arguments);
+            this.beforeRoute.apply(this, arguments);
+            if(this.beforeRoute.length == 0) {
+                done();
+            }
+        } else {
+            done();
         }
+
     },
 
     afterRoute: undefined,
@@ -814,14 +848,14 @@ var View = Backbone.View.extend({
      * @return {object}
      * @protected
      */
-    _getTemplateData: function() {
+    _getTemplateData: function () {
         var data = undefined;
-        if(this.model) {
-            if(this.model instanceof Model) {
+        if (this.model) {
+            if (this.model instanceof Model) {
                 data = this.model.toJSON();
             } else {
                 data = {};
-                _.each(this.model, function(value, key) {
+                _.each(this.model, function (value, key) {
                     data[key] = value.toJSON();
                 }, this);
             }
@@ -888,9 +922,9 @@ var RegionView = View.extend({
         }, this);
     },
 
-    remove: function() {
+    remove: function () {
         // clean up each region. make sure we remove each view
-        _.each(this.regions, function(val) {
+        _.each(this.regions, function (val) {
             val.view && val.view.remove();
         });
         View.prototype.remove.apply(this, arguments);
