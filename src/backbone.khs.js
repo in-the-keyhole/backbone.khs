@@ -609,9 +609,10 @@ var Module = Object.extend({
             var wrapper = _.wrap(callback, function (method) {
                 var args = Array.prototype.slice.call(arguments, 2),
                     args2 = args.slice(0),
+                    args3 = args2.toString().split('/').splice(1),
                     done = _.bind(function() {
-                        method.apply(this, args2);
-                        _this._handleAfterRoute.apply(this, args2);
+                        method.apply(this, args3);
+                        _this._handleAfterRoute.apply(this, args3);
                     }, _this);
 
                 args.unshift(done);
