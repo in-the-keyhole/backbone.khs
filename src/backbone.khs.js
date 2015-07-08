@@ -607,7 +607,7 @@ var Module = Object.extend({
             }
 
             var wrapper = _.wrap(callback, function (method) {
-                var args = Array.prototype.slice.call(arguments, 2),
+                var args = Array.prototype.slice.call(arguments, 1),
                     args2 = args.slice(0),
                     args3 = args2.toString().split('/').splice(1),
                     done = _.bind(function() {
