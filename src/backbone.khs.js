@@ -607,17 +607,16 @@ var Module = Object.extend({
             }
 
             var wrapper = _.wrap(callback, function (method) {
-                var args = Array.prototype.slice.call(arguments, 2),
+                // remove callback method
+                var args = (arguments[1] && route.route.exec(arguments[1])).slice(1) || [],
                     args2 = args.slice(0),
                     done = _.bind(function() {
-                        method.apply(this, args2);
-                        _this._handleAfterRoute.apply(this, args2);
+                        method.apply(this, args);
+                        _this._handleAfterRoute.apply(this, args);
                     }, _this);
 
-                args.unshift(done);
-
-                _this._handleBeforeRoute.apply(_this, args);
-
+                args2.unshift(done);
+                _this._handleBeforeRoute.apply(_this, args2);
             });
 
             path = (key.length > 0) ? this.path + "/" + key : this.path;
