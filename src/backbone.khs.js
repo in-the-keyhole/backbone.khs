@@ -608,7 +608,7 @@ var Module = Object.extend({
 
             var wrapper = _.wrap(callback, function (method) {
                 // remove callback method
-                var args = (arguments[1] && route.route.exec(arguments[1])).slice(1) || [],
+                var args = ((arguments[1] && route.route.exec(arguments[1])) || []).slice(1),
                     args2 = args.slice(0),
                     done = _.bind(function() {
                         method.apply(this, args);
