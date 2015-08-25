@@ -989,9 +989,13 @@ exports.CollectionView = exports.View.extend({
         this.addChild(model, ChildView, index);
     },
 
-    _onCollectionRemove: function () {
-        debugger;
+    _onCollectionRemove: function (model) {
+        var index = _.findIndex(this.children, {model:model}),
+            view = this.children[index];
 
+        if(view) {
+            view.remove();
+        }
     },
 
     /**
