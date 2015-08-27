@@ -854,8 +854,11 @@ var View = Backbone.View.extend({
                 data = this.model.toJSON();
             } else {
                 data = {};
-                _.each(this.model, function (value, key) {
-                    data[key] = value.toJSON();
+                _.each(this.model, function (model, key) {
+                    if(model instanceof Model) {
+                        data[key] = model.toJSON();
+                    }
+                    data[key] = model;
                 }, this);
             }
         }
