@@ -855,10 +855,10 @@ var View = Backbone.View.extend({
             } else {
                 data = {};
                 _.each(this.model, function (model, key) {
-                    if(model instanceof Model) {
+                    if(model instanceof Model)
                         data[key] = model.toJSON();
-                    }
-                    data[key] = model;
+                    else
+                        data[key] = model;
                 }, this);
             }
         }
