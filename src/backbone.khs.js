@@ -163,9 +163,10 @@ var Cache = Object.extend({
     remove: function (key) {
         var cache = _.result(this.store, key);
         if (cache) {
+            var object = this.store[key].object;
             // make sure we remove any timer
             delete this.store[key];
-            this.trigger('cache:' + key + ':remove');
+            this.trigger('cache:' + key + ':remove', object);
         }
     },
 
