@@ -930,7 +930,8 @@ var RegionView = View.extend({
         _.each(this.regions, function (val) {
             val.view && val.view.remove();
         });
-        View.prototype.remove.apply(this, arguments);
+        // TODO: do some work here. Do we really want to do this.
+        //View.prototype.remove.apply(this, arguments);
     }
 });
 
@@ -1029,6 +1030,9 @@ exports.CollectionView = exports.View.extend({
 
     destroyChildren: function () {
         if (this.children.length > 0) {
+            _.each(this.children, function(view) {
+                view.remove();
+            });
             this.childSelector.empty();
         }
         this.children = [];
@@ -1051,6 +1055,11 @@ exports.CollectionView = exports.View.extend({
 
         view.render();
         this.childSelector.append(view.$el);
+    },
+
+    remove: function () {
+        this.destroyChildren();
+        View.prototype.remove.apply(this, arguments);
     }
 });
 
