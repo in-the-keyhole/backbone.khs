@@ -124,7 +124,10 @@ var Cache = Object.extend({
      * @param options.expire {string} - invokes remove after event is called on cache
      */
     put: function (key, object, options) {
-        var expire = _.result(options, 'expire', 0)
+        var expire = _.result(options, 'expire', 0);
+        var removeFunc = (options && options.remove) || _.noop;
+        var putFunc = (options && options.put) || _.noop;
+
         // make sure we don't have a matching key
         this.remove(key);
         // add new object to the store
@@ -132,8 +135,14 @@ var Cache = Object.extend({
             object: object,
             expired: false, // not sure if this is needed
             expire: expire,
-            destroy: this._buildExpireFunction(key, object, expire)
+            destroy: this._buildExpireFunction(key, object, expire),
+            func: {
+                remove: removeFunc,
+                put: putFunc
+            }
         };
+
+        putFunc.call(object);
         this.trigger('cache:' + key + ':put', object);
     },
 
@@ -163,9 +172,11 @@ var Cache = Object.extend({
     remove: function (key) {
         var cache = _.result(this.store, key);
         if (cache) {
-            var object = this.store[key].object;
+            var object = this.store[key].object,
+                func = this.store[key].func.remove;
             // make sure we remove any timer
             delete this.store[key];
+            func.call(object);
             this.trigger('cache:' + key + ':remove', object);
         }
     },
