@@ -15,12 +15,7 @@
   "engines": {
     "node": "*"
   },
-  "licenses": [
-    {
-      "type": "MIT",
-      "url": "https://raw.githubusercontent.com/in-the-keyhole/backbone.khsg/master/LICENSE"
-    }
-  ],
+  "license": "type": "MIT"
   "bugs": {
     "url": "https://github.com/in-the-keyhole/backbone.khs/issues"
   },
