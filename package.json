@@ -15,7 +15,7 @@
   "engines": {
     "node": "*"
   },
-  "license": "MIT"
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/in-the-keyhole/backbone.khs/issues"
   },
