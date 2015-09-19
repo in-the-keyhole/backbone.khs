@@ -767,7 +767,7 @@ var Module = Object.extend({
 });
 
 exports.Module = Module;
-_.extend(Module.prototype, Radio.Commands);
+_.extend(Module.prototype, Radio.Commands, Backbone.Events);
 
 /**
  * View Controller
