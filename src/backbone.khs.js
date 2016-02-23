@@ -1035,7 +1035,16 @@ exports.CollectionView = exports.View.extend({
         this.childSelector = (window.Object.getPrototypeOf(this).childSelector ? this.$(window.Object.getPrototypeOf(this).childSelector) : this.$el);
 
         this.collection.each(function (model, index) {
-            this.addChild(model, this.getChildView(), index);
+            var args = ((arguments[1] && route.route.exec(arguments[1])) || []).slice(1),
+                args2 = args.slice(0),
+                done = _.bind(function() {
+                this.addChild(model, this.getChildView(), index)
+            }, this);
+
+            args2.unshift(done);
+
+            this._handleBeforeAddChild.apply(this, args2);
+
         }, this);
     },
 
@@ -1058,6 +1067,27 @@ exports.CollectionView = exports.View.extend({
         return this.childView;
     },
 
+    beforeAddChild: undefined,
+
+    _handleBeforeAddChild: function (done, model, index) {
+        if (_.isFunction(this.beforeAddChild)) {
+            this.beforeAddChild.apply(this, arguments);
+            if(this.beforeAddChild.length == 0) {
+                done();
+            }
+        } else {
+            done();
+        }
+    },
+
+    afterAddChild: undefined,
+
+    _handleAfterAddChild: function(model) {
+        if (_.isFunction(this.afterAddChild)) {
+            this.addChild.apply(this, arguments)
+        }
+    },
+
     addChild: function (model, View, index) {
         var view = new View({model: model});
         view._parent = this;
@@ -1066,6 +1096,8 @@ exports.CollectionView = exports.View.extend({
 
         view.render();
         this.childSelector.append(view.$el);
+
+        this._handleAfterAddChild.apply(this, [model]);
     },
 
     remove: function () {
