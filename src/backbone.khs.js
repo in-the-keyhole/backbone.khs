@@ -1035,15 +1035,14 @@ exports.CollectionView = exports.View.extend({
         this.childSelector = (window.Object.getPrototypeOf(this).childSelector ? this.$(window.Object.getPrototypeOf(this).childSelector) : this.$el);
 
         this.collection.each(function (model, index) {
-            var args = ((arguments[1] && route.route.exec(arguments[1])) || []).slice(1),
-                args2 = args.slice(0),
+            var args = Array.prototype.slice.call(arguments),
                 done = _.bind(function() {
                 this.addChild(model, this.getChildView(), index)
             }, this);
 
-            args2.unshift(done);
+            args.unshift(done);
 
-            this._handleBeforeAddChild.apply(this, args2);
+            this._handleBeforeAddChild.apply(this, args);
 
         }, this);
     },
