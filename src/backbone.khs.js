@@ -1083,7 +1083,7 @@ exports.CollectionView = exports.View.extend({
 
     _handleAfterAddChild: function(model) {
         if (_.isFunction(this.afterAddChild)) {
-            this.addChild.apply(this, arguments)
+            this.afterAddChild.apply(this, arguments)
         }
     },
 
