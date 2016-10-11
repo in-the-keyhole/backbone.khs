@@ -1,6 +1,6 @@
 {
   "name": "backbone.khs",
-  "version": "0.0.9",
+  "version": "0.1.2",
   "description": "Backbone Extension",
   "main": "src/backbone.khs.js",
   "scripts": {
