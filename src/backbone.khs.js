@@ -622,12 +622,12 @@ var Module = Object.extend({
                 // remove callback method
                 var args = ((arguments[1] && route.route.exec(arguments[1])) || []).slice(1),
                     args2 = args.slice(0),
-                    done = _.bind(function() {
+                    doneRoute = _.bind(function() {
                         method.apply(this, args);
                         _this._handleAfterRoute.apply(this, args);
                     }, _this);
 
-                args2.unshift(done);
+                args2.unshift(doneRoute);
                 _this._handleBeforeRoute.apply(_this, args2);
             });
 
@@ -678,11 +678,12 @@ var Module = Object.extend({
                 var args = Array.prototype.slice.call(arguments, 1),
                     scope = module,
                     args2 = args.slice(1),
-                    done = _.bind(function() {
+                    doneModule = _.bind(function() {
                         method.apply(scope, args);
+                        _this._handleAfterRoute.apply(this, args);
                     }, _this);
 
-                args2.unshift(done);
+                args2.unshift(doneModule);
                 _this._handleBeforeRoute.apply(_this, args2);
             });
 
