@@ -352,7 +352,20 @@ var RegionManager = Object.extend({
     constructor: function (options) {
         options || (options = {});
         _.bindAll(this, 'show', 'remove');
+
+        var _this = this,
+            show = this.show,
+            beforeS = this.beforeShow,
+            afterS = this.afterShow;
+
         _.extend(this, _.pick(options, ['$el']));
+
+        this.show = _.wrap(show, function (fn, view) {
+            view.beforeShow();
+            show.call(_this, view);
+            view.afterShow();
+        });
+
         Object.apply(this, arguments);
     },
 
@@ -854,6 +867,16 @@ var View = Backbone.View.extend({
         this.$el.append(this.template && this.template(this._getTemplateData()));
         this.model && this.bindings && this.stickit();
     },
+
+    /**
+     * executed before show
+     */
+    beforeShow: EmptyFn,
+
+    /**
+     * executed after show
+     */
+    afterShow: EmptyFn,
 
     /**
      *
