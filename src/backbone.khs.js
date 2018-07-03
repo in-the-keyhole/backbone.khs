@@ -105,13 +105,15 @@ var Cache = Object.extend({
 
     /**
      *
-     * Check to see if this key exist
+     * Check to see if this key exists. Note that a value in the cache can
+     * be the boolean false so need to see if the return value is actually
+     * undefined to say the key does not exist in the cache
      *
      * @param key
      * @return {boolean}
      */
     has: function (key) {
-        return !!this.get(key);
+        return this.get(key) !== undefined;
     },
 
     /**
